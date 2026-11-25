@@ -106,12 +106,20 @@ claude mcp add --transport http advent https://advent.example.com/mcp --header "
 
 頁面那邊跟是什麼 AI 無關，只是 AI 連工具的方式不一樣。先在 `.env` 裡把 `AI_NAME` 改成 TA 的名字。下面是 2026 年 11 月我們查到的情況，各家變得很快，以官方幫助頁為準：
 
-- **ChatGPT**：設定 → Apps → 進階設定裡開啟開發者模式，加一個自定義 MCP 聯結器，URL 填 `https://advent.example.com/mcp/<AI_KEY>`。能不能用「寫」的工具（藏、拆、回答）跟套餐有關，OpenAI 自己幾處說法不一樣，以[幫助頁](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-apps-in-chatgpt)為準。改了工具以後要在設定裡重新整理一下聯結器。
+- **ChatGPT**：在支援私有 MCP 的工作區，從設定的 Apps 開啟開發者模式並建立自訂 MCP App，沿用既有 Advent 的 HTTPS 服務。工具出現在 App 裡後，先在對話中呼叫 `advent_board`。能否使用藏、拆和回答工具，取決於工作區的寫入權限與該次操作的確認要求。改了工具定義後，在設定裡重新整理 App。[OpenAI 說明](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-apps-in-chatgpt)
 - **Gemini**：[Gemini CLI](https://github.com/google-gemini/gemini-cli) 可以直接加 MCP 伺服器。Gemini App 裡「已連線的應用」可以填自定義 MCP 地址的功能正在陸續開放，先去設定裡看看有沒有。
 - **DeepSeek 等只有 API 的模型**：官網聊天頁連不了。用一個支援 MCP 的客戶端（Cherry Studio、Chatbox 之類）配上 API key，再把這裡加成 MCP 伺服器（Streamable HTTP）就行。
 - **自己寫的前端**：四個工具底下就是普通的 JSON-RPC over HTTP（`POST /mcp`，Bearer AI_KEY）。用 `tools/list` 拿到工具定義，轉成你那邊模型的函式呼叫格式就能用。
 
 > 小提醒：跟你的 AI 說一聲，**禮物要用 `advent_hide` 藏，別寫在聊天回覆裡**——不然你在聊天裡就先看到了。工具說明裡也寫了這條。
+
+### Doctor 換對話工具時
+
+沿用原本的 Advent MCP。能設定 HTTP 標頭的客戶端用 `/mcp` 加上 Bearer 金鑰。工作區若允許路徑認證，可以在私人連接器設定中填入含金鑰的 MCP 網址。金鑰與完整連線網址都放在私人設定裡，避免出現在聊天、截圖或版本控制。
+
+1. 開啟連接器後，確認工具清單包含 `advent_board`、`advent_hide`、`advent_open` 和 `advent_answer`。在正式日曆只用 `advent_board` 做接入驗收，並確認它回傳 24 格。
+2. 用獨立的 `ADVENT_DATA`、測試金鑰和 `ADVENT_NOW` 驗證寫入。在測試日曆檢查角色限制、藏入成功，以及到了各格開放時間才能看見禮物與回答問題。`advent_open` 即使在午夜前也會記錄一次偷看，所以列為寫入工具。
+3. 平常先看 `advent_board` 決定何時行動。要藏禮物就呼叫 `advent_hide`，聊天只回報是否藏好。等對方的窗到了開放時間，才呼叫 `advent_open`。
 
 ## 換成你們自己的小傢伙
 
@@ -218,12 +226,14 @@ Four MCP tools: `advent_board`, `advent_hide`, `advent_open`, `advent_answer`.
 - **Clients that can't set headers (e.g. claude.ai custom connectors):** use `https://your.host/mcp/<AI_KEY>`, and keep that URL private.
 
 **Not Claude?** The page doesn't care which AI you use; only the connection differs. Set `AI_NAME` first. As of November 2026:
-- **ChatGPT** can add a custom MCP connector in developer mode. Whether write tools work may depend on your plan, so check [OpenAI's help page](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-apps-in-chatgpt).
+- **ChatGPT** can reuse the existing HTTPS MCP endpoint in a workspace that supports private MCP apps. Once the tools appear in the app, call `advent_board` first. Write tools depend on workspace permissions and any confirmation required for the action. [OpenAI Help](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-apps-in-chatgpt)
 - **Gemini CLI** supports MCP servers, and the Gemini app is rolling out custom MCP apps.
 - **DeepSeek and other API-only models** work through an MCP-capable client such as Cherry Studio or Chatbox.
 - **Your own front end** can call `POST /mcp` (JSON-RPC, Bearer AI_KEY) and map `tools/list` to your model's function calling.
 
 Remind your AI to hide gifts with `advent_hide` and never put them in a chat reply.
+
+When switching clients, verify discovery of all four tools and use `advent_board` for the production smoke test. Use separate `ADVENT_DATA`, test keys, and `ADVENT_NOW` to check writes across midnight. An early `advent_open` records a peek. Keep any URL containing a key in the private connector settings.
 
 ### Make it yours
 
