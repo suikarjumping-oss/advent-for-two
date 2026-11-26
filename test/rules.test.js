@@ -76,3 +76,18 @@ test('only https links and own uploads are kept', () => {
   const g = a.view('human', t0).cells[5].gifts.human;
   assert.deepEqual(g.items.map((i) => i.url), ['uploads/abc.png', 'https://open.spotify.com/track/x']);
 });
+
+test('advent_mine reads back only your own window, without a peek', async () => {
+  const { callTool } = await import('../server/tools.js');
+  const a = fresh();
+  a.hide({ day: 3, author: 'ai', items: [{ type: 'text', text: 'mine' }], note: 'n' });
+  a.hide({ day: 4, author: 'human', items: [{ type: 'text', text: 'secret' }] });
+  const ctx = { advent: a, names: { ai: 'AI', human: 'H' }, uploads: os.tmpdir(), notify: () => {} };
+  const [r] = await callTool('advent_mine', { day: 3 }, ctx);
+  assert.match(r.text, /mine/); assert.match(r.text, /\[note\] n/);
+  const [h] = await callTool('advent_mine', { day: 4 }, ctx);
+  assert.doesNotMatch(h.text, /secret/);
+  const [e] = await callTool('advent_mine', { day: 5 }, ctx);
+  assert.match(e.text, /haven't hidden/);
+  assert.equal(a.db.events.filter((x) => x.kind === 'peek').length, 0);
+});

@@ -71,12 +71,13 @@ advent.example.com {
 
 ## 讓你的 AI 連上
 
-AI 有四個工具：
+AI 有五個工具：
 
 | 工具 | 做什麼 |
 |---|---|
 | `advent_board` | 看整面牆：哪天歸誰、藏沒藏、誰拆了、各偷看幾次 |
 | `advent_hide` | 藏自己那格：`text` 信 / `abc` 五線譜 / `song` 歌 / `image` 圖 / `question` 問題 / `note` 小卡片 / `icon` |
+| `advent_mine` | 讀回自己已經藏的格子（不算偷看，看不到你的格子），決定要不要用掉那一次修改 |
 | `advent_open` | 拆你的格子（沒到日子 = 偷看一次）。圖片會直接給它看 |
 | `advent_answer` | 回答你在格子裡留的問題 |
 
@@ -109,7 +110,7 @@ claude mcp add --transport http advent https://advent.example.com/mcp --header "
 - **ChatGPT**：設定 → Apps → 進階設定裡開啟開發者模式，加一個自定義 MCP 聯結器，URL 填 `https://advent.example.com/mcp/<AI_KEY>`。能不能用「寫」的工具（藏、拆、回答）跟套餐有關，OpenAI 自己幾處說法不一樣，以[幫助頁](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-apps-in-chatgpt)為準。改了工具以後要在設定裡重新整理一下聯結器。
 - **Gemini**：[Gemini CLI](https://github.com/google-gemini/gemini-cli) 可以直接加 MCP 伺服器。Gemini App 裡「已連線的應用」可以填自定義 MCP 地址的功能正在陸續開放，先去設定裡看看有沒有。
 - **DeepSeek 等只有 API 的模型**：官網聊天頁連不了。用一個支援 MCP 的客戶端（Cherry Studio、Chatbox 之類）配上 API key，再把這裡加成 MCP 伺服器（Streamable HTTP）就行。
-- **自己寫的前端**：四個工具底下就是普通的 JSON-RPC over HTTP（`POST /mcp`，Bearer AI_KEY）。用 `tools/list` 拿到工具定義，轉成你那邊模型的函式呼叫格式就能用。
+- **自己寫的前端**：五個工具底下就是普通的 JSON-RPC over HTTP（`POST /mcp`，Bearer AI_KEY）。用 `tools/list` 拿到工具定義，轉成你那邊模型的函式呼叫格式就能用。
 
 > 小提醒：跟你的 AI 說一聲，**禮物要用 `advent_hide` 藏，別寫在聊天回覆裡**——不然你在聊天裡就先看到了。工具說明裡也寫了這條。
 
@@ -159,7 +160,7 @@ server/
   rules.js       規矩全在這裡（時區零點、誰藏哪格、誰能看到什麼、偷看、只能改一次）
   store.js       一個 JSON 檔案的儲存
   server.js      頁面 + API + MCP，一個檔案，沒有依賴
-  tools.js       AI 的四個工具
+  tools.js       AI 的五個工具
   mcp-stdio.js   給 stdio 客戶端的小橋
 web/
   house.js       房子引擎（不依賴任何框架，可以單獨拿去用）
@@ -211,7 +212,7 @@ For phone access, run it on a server behind an HTTPS reverse proxy (e.g. Caddy: 
 
 ### Connect your AI
 
-Four MCP tools: `advent_board`, `advent_hide`, `advent_open`, `advent_answer`.
+Five MCP tools: `advent_board`, `advent_hide`, `advent_mine`, `advent_open`, `advent_answer`.
 
 - **Claude Code:** `claude mcp add --transport http advent https://your.host/mcp --header "Authorization: Bearer <AI_KEY>"`
 - **stdio clients (Claude Desktop, etc.):** run `server/mcp-stdio.js` with `ADVENT_URL` and `AI_KEY` set. It also uploads local image paths for the AI.

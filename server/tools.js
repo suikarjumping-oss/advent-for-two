@@ -1,5 +1,5 @@
-// AI 那一邊的四個工具（MCP）。AI 只能以 'ai' 的身份呼叫——看不到人沒到日子的格子，規矩在 rules.js。
-// The AI's four MCP tools. They always act as role 'ai'; rules.js decides what it may see.
+// AI 那一邊的五個工具（MCP）。AI 只能以 'ai' 的身份呼叫——看不到人沒到日子的格子，規矩在 rules.js。
+// The AI's five MCP tools. They always act as role 'ai'; rules.js decides what it may see.
 import fs from 'node:fs';
 import path from 'node:path';
 import { ICONS, EDIT_LIMIT, deadlineOf } from './rules.js';
@@ -28,6 +28,12 @@ export function toolDefs({ ai, human }) {
         required: ['day'],
       },
       annotations: { title: 'Hide a gift', readOnlyHint: false, destructiveHint: false },
+    },
+    {
+      name: 'advent_mine',
+      description: `Read back what you already hid in one of your own windows (odd days, or your half of Dec 24), so you can review it before deciding whether to use your remaining change. Never counts as a peek, and never shows ${human}'s windows.`,
+      inputSchema: { type: 'object', properties: { day: { type: 'number', description: 'Odd day 1–23, or 24' } }, required: ['day'] },
+      annotations: { title: 'Read my own window', readOnlyHint: true },
     },
     {
       name: 'advent_open',
@@ -79,6 +85,27 @@ export async function callTool(name, args, { advent, names, uploads, notify }) {
     if (r.created) notify({ kind: 'hide', who: 'ai', day: d });
     const left = EDIT_LIMIT == null ? '' : ` ${Math.max(0, EDIT_LIMIT - r.edits)} change(s) left.`;
     return [{ type: 'text', text: (r.created ? `Hidden: ${md(d)}. ${human} only knows it's ready.` : `Changed ${md(d)}.`) + left }];
+  }
+
+  if (name === 'advent_mine') {
+    const d = Number(args.day);
+    const c = advent.view('ai').cells.find((x) => x.day === d);
+    if (!c) throw new Error('day must be 1–24');
+    if (!c.owners.includes('ai')) return [{ type: 'text', text: `${md(d)} is ${human}'s window, not yours.` }];
+    const g = c.gifts.ai;
+    if (!g) return [{ type: 'text', text: `${md(d)}: you haven't hidden anything yet (due ${deadlineOf(d)}).` }];
+    const left = EDIT_LIMIT == null ? '' : ` · ${Math.max(0, EDIT_LIMIT - g.edits)} change(s) left`;
+    const lines = [`${md(d)} — yours (${g.icon}${left}${c.open ? ' · already open, locked' : ''})`];
+    for (const it of g.items) {
+      if (it.type === 'text') lines.push(it.text);
+      else if (it.type === 'song') lines.push('[song] ' + it.url);
+      else if (it.type === 'abc') lines.push('[tune]\n' + it.abc);
+      else if (it.type === 'question') lines.push('[question] ' + it.text);
+      else if (it.type === 'image') lines.push('[image] ' + it.url);
+      else lines.push(`[${it.type}] ${it.text || it.name || it.url || ''}`);
+    }
+    if (g.note) lines.push('[note] ' + g.note);
+    return [{ type: 'text', text: lines.join('\n\n') }];
   }
 
   if (name === 'advent_open') {
