@@ -29,6 +29,7 @@ node -v
 echo "== 4/6 程式碼"
 id advent >/dev/null 2>&1 || useradd --system --home "$APP" --shell /usr/sbin/nologin advent
 if [ -d "$APP/.git" ]; then
+  git config --global --get-all safe.directory 2>/dev/null | grep -qx "$APP" || git config --global --add safe.directory "$APP"   # 資料夾歸 advent，root 拉更新時 git 會擋
   git -C "$APP" pull -q --ff-only
 else
   git clone -q "$REPO" "$APP"
